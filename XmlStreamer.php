@@ -1,0 +1,165 @@
+<?php
+
+/*
+Author: oskar.thornblad@gmail.com
+ 
+Usage:
+Extend the class and implement the processNode method.
+
+Example:
+class SimpleXmlStreamer extends XmlStreamer {	public function processNode($xmlString, $elementName, $nodeIndex) {
+		$xml = simplexml_load_string($xmlString);		$something = (string)$xml->Something->SomethingElse->ReadThis;		echo "$nodeIndex: Extracted string '$something' from parent node '$elementName'\n";		
+		return true;	}
+}
+$streamer = new SimpleXmlStreamer("myLargeXmlFile.xml");
+if ($streamer->parse()) {	echo "Finished successfully";
+} else {
+	echo "Couldn't find root node";
+}
+*/
+
+abstract class XmlStreamer {
+	private $handle;
+	private $totalBytes;
+	private $readBytes = 0;
+	private $nodeIndex = 0;
+	private $chunk = "";
+	private $chunkSize;
+	private $readFromChunkPos;
+	
+	private $rootNode;
+	private $customRootNode;
+	
+	/**
+	* @param $mixed				Path to XML file OR file handle
+	* @param $chunkSize			Bytes to read per cycle (Optional, default is 16 KiB)
+	* @param $customRootNode	Specific root node to use (Optional)
+	* @param $totalBytes		Xml file size - Required if supplied file handle
+	*/
+	public function __construct($mixed, $chunkSize = 16384, $customRootNode = null, $totalBytes = null) {
+		if (is_string($mixed)) {
+			$this->handle = fopen($mixed, "r");
+			if (isset($totalBytes)) {
+				$this->totalBytes = $totalBytes;
+			} else {
+				$this->totalBytes = filesize($mixed);
+			}
+		} else if (is_resource($mixed)){
+			$this->handle = $mixed;
+			if (!isset($totalBytes)) {
+				throw new Exception("totalBytes parameter required when supplying a file handle.");
+			}
+			$this->totalBytes = $totalBytes;
+		}
+		
+		$this->chunkSize = $chunkSize;
+		$this->customRootNode = $customRootNode;
+	}
+	
+	/**
+	* Gets called for every XML node that is found as a child to the root node
+	* @param $xmlString		Complete XML tree of the node as a string
+	* @param $elementName	Name of the node for easy access
+	* @param $nodeIndex		Zero-based index that increments for every node
+	* @return				If false is returned, the streaming will stop
+	*/
+	abstract public function processNode($xmlString, $elementName, $nodeIndex);
+	
+	/**
+	* Gets the total read bytes so far
+	*/
+	public function getReadBytes() {
+		return $this->readBytes;
+	}
+	
+	/**
+	* Gets the total file size of the xml
+	*/
+	public function getTotalBytes() {
+		return $this->totalBytes;
+	}
+	
+	/**
+	* Starts the streaming and parsing of the XML file
+	*/
+	public function parse() {
+		$counter = 0;
+		$continue = true;
+		while ($continue) {
+			$continue = $this->readNextChunk();
+			
+			$counter++;
+			if (!isset($this->rootNode)) {
+				// Find root node
+				if (isset($this->customRootNode)) {
+					$customRootNodePos = strpos($this->chunk, "<{$this->customRootNode}>");
+					if ($customRootNodePos !== false) {
+						// Found custom root node
+						$this->rootNode = $this->customRootNode;
+						$this->readFromChunkPos = strpos($this->chunk, "<{$this->customRootNode}>") + strlen("<{$this->customRootNode}>");
+					} else {
+						// Clear chunk to save memory, it doesn't contain the root anyway
+						$this->readFromChunkPos = 0;
+						$this->chunk = "";
+						continue;
+					}
+				} else {
+					preg_match("/<([a-zA-Z]+)>/", $this->chunk, $matches);
+					if (isset($matches[1])) {
+						// Found root node
+						$this->rootNode = $matches[1];
+						$this->readFromChunkPos = strpos($this->chunk, $matches[0]) + strlen($matches[0]);
+					} else {
+						// Clear chunk to save memory, it doesn't contain the root anyway
+						$this->readFromChunkPos = 0;
+						$this->chunk = "";
+						continue;
+					}
+				}
+			}
+			
+			while (true) {
+				$fromChunkPos = substr($this->chunk, $this->readFromChunkPos);
+				
+				// Find element
+				preg_match("/<([a-zA-Z]+)>/", $fromChunkPos, $matches);
+				if (isset($matches[1])) {
+					// Found element
+					$element = $matches[1];
+					
+					// Is there an end to this element tag?
+					$endTagPos = strpos($fromChunkPos, "</$element>");
+					
+					if ($endTagPos !== false) {
+						// Found end tag
+						$endTagEndPos = $endTagPos + strlen("</$element>");
+						$elementWithChildren = substr($fromChunkPos, 0, $endTagEndPos);
+						$continueParsing = $this->processNode($elementWithChildren, $element, $this->nodeIndex++);
+						$this->chunk = substr($this->chunk, strpos($this->chunk, "</$element>") + strlen("</$element>"));
+						$this->readFromChunkPos = 0;
+						
+						if (isset($continueParsing) && $continueParsing === false) {
+							break(2);
+						}
+					} else {
+						break;
+					}
+				} else {
+					break;
+				}
+			}
+		}
+		return isset($this->rootNode);
+		fclose($this->handle);
+	}
+	
+	private function readNextChunk() {
+		$this->chunk .= fread($this->handle, $this->chunkSize);
+		$this->readBytes += $this->chunkSize;
+		if ($this->readBytes >= $this->totalBytes) {
+			$this->readBytes = $this->totalBytes;
+			return false;
+		}
+		return true;
+	}
+}
