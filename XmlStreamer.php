@@ -89,7 +89,7 @@ abstract class XmlStreamer {
 						continue;
 					}
 				} else {
-					preg_match("/<([a-zA-Z]+)>/", $this->chunk, $matches);
+					preg_match("/<([a-zA-Z][^>]+)>/", $this->chunk, $matches);
 					if (isset($matches[1])) {
 						// Found root node
 						$this->rootNode = $matches[1];
@@ -107,7 +107,7 @@ abstract class XmlStreamer {
 				$fromChunkPos = substr($this->chunk, $this->readFromChunkPos);
 				
 				// Find element
-				preg_match("/<([a-zA-Z]+)>/", $fromChunkPos, $matches);
+				preg_match("/<([a-zA-Z][^>]+)>/", $fromChunkPos, $matches);
 				if (isset($matches[1])) {
 					// Found element
 					$element = $matches[1];
