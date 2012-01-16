@@ -21,7 +21,7 @@ abstract class XmlStreamer {
 	* @param $customRootNode	Specific root node to use (Optional)
 	* @param $totalBytes		Xml file size - Required if supplied file handle
 	*/
-	public function __construct($mixed, $chunkSize = 16384, $customRootNode = null, $totalBytes = null) {
+	public function __construct($mixed, $chunkSize = 16384, $customRootNode = null, $totalBytes = null, $customChildNode = null) {
 		if (is_string($mixed)) {
 			$this->handle = fopen($mixed, "r");
 			if (isset($totalBytes)) {
@@ -39,6 +39,7 @@ abstract class XmlStreamer {
 		
 		$this->chunkSize = $chunkSize;
 		$this->customRootNode = $customRootNode;
+		$this->customChildNode = $customChildNode;
 	}
 	
 	/**
@@ -77,11 +78,28 @@ abstract class XmlStreamer {
 			if (!isset($this->rootNode)) {
 				// Find root node
 				if (isset($this->customRootNode)) {
-					$customRootNodePos = strpos($this->chunk, "<{$this->customRootNode}>");
+					$customRootNodePos = strpos($this->chunk, "<{$this->customRootNode}");
 					if ($customRootNodePos !== false) {
 						// Found custom root node
+						// Support attributes
+						$closer = strpos(substr($this->chunk, $customRootNodePos), ">");
+						$readFromChunkPos = $customRootNodePos + $closer + 1;
+						
+						// Custom child node?
+						if (isset($this->customChildNode)) {
+							// Find it in the chunk
+							$customChildNodePos = strpos(substr($this->chunk, $readFromChunkPos), "<{$this->customChildNode}");
+							if ($customChildNodePos !== false) {
+								// Found it!
+								$readFromChunkPos = $readFromChunkPos + $customChildNodePos;
+							} else {
+								// Didn't find it - read a larger chunk and do everything again
+								continue;
+							}
+						}
+						
 						$this->rootNode = $this->customRootNode;
-						$this->readFromChunkPos = strpos($this->chunk, "<{$this->customRootNode}>") + strlen("<{$this->customRootNode}>");
+						$this->readFromChunkPos = $readFromChunkPos;
 					} else {
 						// Clear chunk to save memory, it doesn't contain the root anyway
 						$this->readFromChunkPos = 0;
@@ -113,14 +131,20 @@ abstract class XmlStreamer {
 					$element = $matches[1];
 					
 					// Is there an end to this element tag?
-					$endTagPos = strpos($fromChunkPos, "</$element>");
+					$spacePos = strpos($element, " ");
+					if ($spacePos !== false) {
+						$endTag = "</" . substr($element, 0, $spacePos) . ">";
+					} else {
+						$endTag = "</$element>";
+					}
+					$endTagPos = strpos($fromChunkPos, $endTag);
 					
 					if ($endTagPos !== false) {
 						// Found end tag
-						$endTagEndPos = $endTagPos + strlen("</$element>");
+						$endTagEndPos = $endTagPos + strlen($endTag);
 						$elementWithChildren = substr($fromChunkPos, 0, $endTagEndPos);
 						$continueParsing = $this->processNode($elementWithChildren, $element, $this->nodeIndex++);
-						$this->chunk = substr($this->chunk, strpos($this->chunk, "</$element>") + strlen("</$element>"));
+						$this->chunk = substr($this->chunk, strpos($this->chunk, $endTag) + strlen($endTag));
 						$this->readFromChunkPos = 0;
 						
 						if (isset($continueParsing) && $continueParsing === false) {
