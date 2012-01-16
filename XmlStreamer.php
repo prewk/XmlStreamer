@@ -1,5 +1,4 @@
 <?php
-// XmlStreamer 1.0
 // oskar.thornblad@gmail.com
 // Free for everyone for everything, attribution voluntary
 
