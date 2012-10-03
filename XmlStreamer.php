@@ -1,8 +1,10 @@
 <?php
 // oskar.thornblad@gmail.com
 // Free for everyone for everything, attribution voluntary
+//
+// extended by Valiton GmbH, SEP/2012
 
-abstract class XmlStreamer {
+abstract class ThornbladXmlStreamer {
 	private $handle;
 	private $totalBytes;
 	private $readBytes = 0;
@@ -10,10 +12,10 @@ abstract class XmlStreamer {
 	private $chunk = "";
 	private $chunkSize;
 	private $readFromChunkPos;
-	
+
 	private $rootNode;
 	private $customRootNode;
-	
+
 	/**
 	* @param $mixed				Path to XML file OR file handle
 	* @param $chunkSize			Bytes to read per cycle (Optional, default is 16 KiB)
@@ -35,12 +37,12 @@ abstract class XmlStreamer {
 			}
 			$this->totalBytes = $totalBytes;
 		}
-		
+
 		$this->chunkSize = $chunkSize;
 		$this->customRootNode = $customRootNode;
 		$this->customChildNode = $customChildNode;
 	}
-	
+
 	/**
 	* Gets called for every XML node that is found as a child to the root node
 	* @param $xmlString		Complete XML tree of the node as a string
@@ -49,21 +51,21 @@ abstract class XmlStreamer {
 	* @return				If false is returned, the streaming will stop
 	*/
 	abstract public function processNode($xmlString, $elementName, $nodeIndex);
-	
+
 	/**
 	* Gets the total read bytes so far
 	*/
 	public function getReadBytes() {
 		return $this->readBytes;
 	}
-	
+
 	/**
 	* Gets the total file size of the xml
 	*/
 	public function getTotalBytes() {
 		return $this->totalBytes;
 	}
-	
+
 	/**
 	* Starts the streaming and parsing of the XML file
 	*/
@@ -72,7 +74,7 @@ abstract class XmlStreamer {
 		$continue = true;
 		while ($continue) {
 			$continue = $this->readNextChunk();
-			
+
 			$counter++;
 			if (!isset($this->rootNode)) {
 				// Find root node
@@ -83,7 +85,7 @@ abstract class XmlStreamer {
 						// Support attributes
 						$closer = strpos(substr($this->chunk, $customRootNodePos), ">");
 						$readFromChunkPos = $customRootNodePos + $closer + 1;
-						
+
 						// Custom child node?
 						if (isset($this->customChildNode)) {
 							// Find it in the chunk
@@ -96,7 +98,7 @@ abstract class XmlStreamer {
 								continue;
 							}
 						}
-						
+
 						$this->rootNode = $this->customRootNode;
 						$this->readFromChunkPos = $readFromChunkPos;
 					} else {
@@ -106,7 +108,13 @@ abstract class XmlStreamer {
 						continue;
 					}
 				} else {
-					preg_match("/<([a-zA-Z][^>]+)>/", $this->chunk, $matches);
+
+      // $$-- Valiton change: changed pattern. XML1.0 standard allows almost all
+      //                      Unicode characters even Chinese and Cyrillic.
+      //                      see:
+      //                      http://en.wikipedia.org/wiki/XML#International_use
+					preg_match('/<([^>\?]+)>/', $this->chunk, $matches);
+        //  --$$
 					if (isset($matches[1])) {
 						// Found root node
 						$this->rootNode = $matches[1];
@@ -119,33 +127,96 @@ abstract class XmlStreamer {
 					}
 				}
 			}
-			
+
+
 			while (true) {
+
 				$fromChunkPos = substr($this->chunk, $this->readFromChunkPos);
-				
+
 				// Find element
-				preg_match("/<([a-zA-Z][^>]+)>/", $fromChunkPos, $matches);
+
+      // $$-- Valiton change: changed pattern. XML1.0 standard allows almost all
+      //                      Unicode characters even Chinese and Cyrillic.
+      //                      see:
+      //                      http://en.wikipedia.org/wiki/XML#International_use
+				preg_match('/<([^>]+)>/', $fromChunkPos, $matches);
+      //  --$$
 				if (isset($matches[1])) {
-					// Found element
-					$element = $matches[1];
-					
+
+          // Found element
+          $element = $matches[1];
+
+
+        // $$-- Valiton change: handle attributes inside elements. aswell as
+        //                      when they are distributed over multiple lines.
+
 					// Is there an end to this element tag?
 					$spacePos = strpos($element, " ");
-					if ($spacePos !== false) {
-						$endTag = "</" . substr($element, 0, $spacePos) . ">";
-					} else {
-						$endTag = "</$element>";
+          $crPos =    strpos($element, "\r");
+          $lfPos =    strpos($element, "\n");
+          $tabPos =   strpos($element, "\t");
+
+          // find min. (exclude false, as it would convert to int 0)
+          $aPositionsIn = array($spacePos, $crPos, $lfPos, $tabPos);
+          foreach($aPositionsIn as $iPos){
+
+            if($iPos !== false){
+              $aPositions[] = $iPos;
+            }
+          }
+
+          $minPos = min($aPositions);
+
+					if($minPos !== false && $minPos != 0){
+            $sElementName = substr($element, 0, $minPos);
+						$endTag = "</".$sElementName.">";
 					}
-					$endTagPos = strpos($fromChunkPos, $endTag);
-					
+          else {
+            $sElementName = $element;
+						$endTag = "</$sElementName>";
+					}
+
+          $endTagPos = false;
+
+          // try selfclosing first!
+          // NOTE: selfclosing is inside the element
+          $lastCharPos = strlen($element)-1;
+          if(substr($element, $lastCharPos) == "/"){
+            $endTag = "/>";
+            $endTagPos = $lastCharPos;
+
+            $iPos = strpos($fromChunkPos, "<");
+            if($iPos !== false){
+
+              // correct difference between $element and $fromChunkPos
+              // "+1" is for the missing '<' in $element
+              $endTagPos += $iPos +1;
+            }
+
+          }
+
+          if($endTagPos === false){
+
+            $endTagPos = strpos($fromChunkPos, $endTag);
+          }
+
+        // --$$
+
+
 					if ($endTagPos !== false) {
+
 						// Found end tag
 						$endTagEndPos = $endTagPos + strlen($endTag);
 						$elementWithChildren = substr($fromChunkPos, 0, $endTagEndPos);
-						$continueParsing = $this->processNode($elementWithChildren, $element, $this->nodeIndex++);
+
+          // $$-- Valiton change
+            $elementWithChildren = trim($elementWithChildren);
+          // --$$
+
+						$continueParsing = $this->processNode($elementWithChildren, $sElementName, $this->nodeIndex++);
 						$this->chunk = substr($this->chunk, strpos($this->chunk, $endTag) + strlen($endTag));
 						$this->readFromChunkPos = 0;
-						
+
 						if (isset($continueParsing) && $continueParsing === false) {
 							break(2);
 						}
@@ -160,8 +231,11 @@ abstract class XmlStreamer {
 		return isset($this->rootNode);
 		fclose($this->handle);
 	}
-	
+
+
+
 	private function readNextChunk() {
+
 		$this->chunk .= fread($this->handle, $this->chunkSize);
 		$this->readBytes += $this->chunkSize;
 		if ($this->readBytes >= $this->totalBytes) {
@@ -170,4 +244,6 @@ abstract class XmlStreamer {
 		}
 		return true;
 	}
+
+
 }
