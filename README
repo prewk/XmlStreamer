@@ -8,7 +8,7 @@ Usage:
 Extend the class and implement the processNode method.
 
 Example:
-class SimpleXmlStreamer extends XmlStreamer {
+class SimpleXmlStreamer extends ThornbladXmlStreamer {
 	public function processNode($xmlString, $elementName, $nodeIndex) {
 		$xml = simplexml_load_string($xmlString);
 		$something = (string)$xml->Something->SomethingElse->ReadThis;
