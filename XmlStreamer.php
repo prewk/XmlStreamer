@@ -4,7 +4,7 @@
 //
 // extended by Valiton GmbH, SEP/2012
 
-abstract class ThornbladXmlStreamer {
+abstract class XmlStreamer {
 	private $handle;
 	private $totalBytes;
 	private $readBytes = 0;
@@ -158,6 +158,7 @@ abstract class ThornbladXmlStreamer {
 
           // find min. (exclude false, as it would convert to int 0)
           $aPositionsIn = array($spacePos, $crPos, $lfPos, $tabPos);
+          $aPositions = array();
           foreach($aPositionsIn as $iPos){
 
             if($iPos !== false){
