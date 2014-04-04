@@ -21,6 +21,7 @@ Install with composer by adding the following to your composer.json file:
         "prewk/xml-streamer": "dev-master"
     }
 }
+````
 
 Then, run `composer install` (assuming you have [composer](https://getcomposer.org/) installed.)
 
