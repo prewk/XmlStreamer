@@ -10,7 +10,7 @@ Contributions from:
  * Valiton GmbH
  * Michael Härtl
 
-Free for everyone for everything, attribution voluntary
+Licensed under the [MIT license](http://opensource.org/licenses/MIT).
 
 # Installation
 Install with composer by adding the following to your composer.json file:
