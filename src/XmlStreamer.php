@@ -40,7 +40,7 @@ abstract class XmlStreamer
         } else if (is_resource($mixed)){
             $this->handle = $mixed;
             if (!isset($totalBytes)) {
-                throw new Exception("totalBytes parameter required when supplying a file handle.");
+                throw new \Exception("totalBytes parameter required when supplying a file handle.");
             }
             $this->totalBytes = $totalBytes;
         }
