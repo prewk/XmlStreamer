@@ -12,6 +12,18 @@ Contributions from:
 
 Free for everyone for everything, attribution voluntary
 
+# Installation
+Install with composer by adding the following to your composer.json file:
+
+```json
+{
+    "require": {
+        "prewk/xml-streamer": "dev-master"
+    }
+}
+
+Then, run `composer install` (assuming you have [composer](https://getcomposer.org/) installed.)
+
 # Usage
 
 Extend the class and implement the `processNode()` method.
