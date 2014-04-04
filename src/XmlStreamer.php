@@ -1,4 +1,4 @@
-<?php namespace Prewk
+<?php namespace Prewk;
 /*
 Copyright (c) 2014 Oskar Thornblad (oskar.thornblad@gmail.com), contributions from Valiton GmbH, Michael Härtl
 https://github.com/prewk/XmlStreamer
