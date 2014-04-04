@@ -21,7 +21,7 @@ Extend the class and implement the `processNode()` method.
 
 ```php
 <?php
-class SimpleXmlStreamer extends XmlStreamer
+class SimpleXmlStreamer extends \Prewk\XmlStreamer
 {
     public function processNode($xmlString, $elementName, $nodeIndex)
     {
@@ -47,7 +47,7 @@ It gets called after a chunk of data was processed.
 
 ```php
 <?php
-class SimpleXmlStreamer extends XmlStreamer
+class SimpleXmlStreamer extends \Prewk\XmlStreamer
 {
     protected $pdo;
     protected $sql = array();

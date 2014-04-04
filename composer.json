@@ -1,0 +1,16 @@
+{
+    "name": "prewk/xml-streamer",
+    "description": "Stream large XML files with low memory consumption.",
+    "license": "MIT License",
+    "authors": [
+        {
+            "name": "prewk",
+            "email": "oskar.thornblad@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Prewk\\XmlStreamer\\": "src"
+        }
+    }
+}
