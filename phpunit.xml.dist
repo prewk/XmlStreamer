@@ -13,7 +13,7 @@
         >
 
     <testsuites>
-        <testsuite name="Your package's test suit">
+        <testsuite name="XMLStreamer's test suite">
             <directory>./tests/</directory>
         </testsuite>
     </testsuites>
