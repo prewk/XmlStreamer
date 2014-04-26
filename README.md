@@ -1,4 +1,4 @@
-XmlStreamer
+XmlStreamer [![Build Status](https://travis-ci.org/prewk/XmlStreamer.svg?branch=master)](https://travis-ci.org/prewk/XmlStreamer)
 ==========
 
 # About
