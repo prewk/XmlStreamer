@@ -1,6 +1,8 @@
 XmlStreamer [![Build Status](https://travis-ci.org/prewk/XmlStreamer.svg?branch=master)](https://travis-ci.org/prewk/XmlStreamer)
 ==========
 
+__This project is discontinued, I recommend using its successor [xml-string-streamer](https://github.com/prewk/xml-string-streamer) instead.__
+
 # About
 
 Written by oskar.thornblad@gmail.com.
