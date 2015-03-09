@@ -12,6 +12,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 */
 abstract class XmlStreamer
 {
+    private $closeWhenFinished = false;
     private $handle;
     private $totalBytes;
     private $readBytes = 0;
@@ -32,6 +33,7 @@ abstract class XmlStreamer
     public function __construct($mixed, $chunkSize = 16384, $customRootNode = null, $totalBytes = null, $customChildNode = null) {
         if (is_string($mixed)) {
             $this->handle = fopen($mixed, "r");
+            $this->closeWhenFinished = true;
             if (isset($totalBytes)) {
                 $this->totalBytes = $totalBytes;
             } else {
@@ -233,8 +235,13 @@ abstract class XmlStreamer
             }
             $this->chunkCompleted();
         }
+
+        // If we opened, we need to close..
+        if ($this->closeWhenFinished) {
+            fclose($this->handle);
+        }
+
         return isset($this->rootNode);
-        fclose($this->handle);
     }
 
     private function readNextChunk()
